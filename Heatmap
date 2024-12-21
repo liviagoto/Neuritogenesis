@@ -1,52 +1,63 @@
-# Define bins and their results with p-values (manually extracted from previous outputs)
+# Redefine the data with actual p-values in scientific notation
 bin_results_with_p = {
-    "5-10 µm": [
-        ("5-MeO-DMT 1 uM", "DMSO", -115.32, 0.0000),
-        ("5-MeO-DMT 10 nM", "DMSO", -106.36, 0.0000),
-        ("5-MeO-DMT 10 µM", "DMSO", -101.43, 0.0001)
+    "6-10": [
+        ("5-MeO-DMT 1 uM", 115.32, 1.63e-10),
+        ("5-MeO-DMT 10 nM", 106.36, 1.63e-10),
+        ("5-MeO-DMT 100 nM", 101.43, 0.0001)
     ],
-    "10-15 µm": [
-        ("5-MeO-DMT 1 nM", "DMSO", -93.50, 0.0002),
-        ("5-MeO-DMT 1 uM", "DMSO", -156.60, 0.0000),
-        ("5-MeO-DMT 10 nM", "DMSO", -156.72, 0.0000),
-        ("5-MeO-DMT 100 nM", "DMSO", -193.97, 0.0000)
+    "11-15": [
+        ("5-MeO-DMT 1 nM", 97.33, 0.0009),
+        ("5-MeO-DMT 1 uM", 151.00, 1.13e-20),
+        ("5-MeO-DMT 10 nM", 155.22, 1.13e-20),
+        ("5-MeO-DMT 100 nM", 197.78, 1.13e-20)
     ],
-    "15-20 µm": [
-        ("5-MeO-DMT 1 uM", "DMSO", -35.12, 0.0101),
-        ("5-MeO-DMT 100 nM", "DMSO", -46.84, 0.0004)
-    ],
-    "20-25 µm": [
-        ("5-MeO-DMT 1 uM", "DMSO", -1.87, 0.0218)
+    "16-20": [
+        ("5-MeO-DMT 1 uM", 24.12, 0.0063),
+        ("5-MeO-DMT 100 nM", 28.73, 0.0013)
     ]
 }
 
-# Prepare data for heatmap with p-values
-heatmap_data_with_p = []
+# Prepare data for heatmap
+heatmap_data = []
 for bin_name, pairs in bin_results_with_p.items():
-    for treatment, control, mean_diff, p_value in pairs:
-        heatmap_data_with_p.append([bin_name, treatment, mean_diff, p_value])
+    for treatment, mean_diff, p_value in pairs:
+        heatmap_data.append([bin_name, treatment, mean_diff, p_value])
 
-# Convert to DataFrame for heatmap
-heatmap_df_with_p = pd.DataFrame(heatmap_data_with_p, columns=["Bin", "Treatment", "Mean Difference", "P-Value"])
+# Convert to DataFrame
+heatmap_df = pd.DataFrame(heatmap_data, columns=["Bin", "Treatment", "Mean Difference", "P-Value"])
 
-# Pivot for heatmap
-heatmap_pivot_diff = heatmap_df_with_p.pivot(index="Treatment", columns="Bin", values="Mean Difference")
-heatmap_pivot_pval = heatmap_df_with_p.pivot(index="Treatment", columns="Bin", values="P-Value")
+# Set bin order
+ordered_bins = ['6-10', '11-15', '16-20']
+heatmap_df['Bin'] = pd.Categorical(heatmap_df['Bin'], categories=ordered_bins, ordered=True)
 
-# Plot heatmap for mean differences
-plt.figure(figsize=(10, 6))
-sns.heatmap(heatmap_pivot_diff, annot=True, cmap="coolwarm", fmt=".2f")
-plt.title("Mean Differences Between DMSO and Other Treatments")
-plt.ylabel("Treatment")
-plt.xlabel("Distance Bin")
+# Create pivot tables
+heatmap_pivot_diff = heatmap_df.pivot(index="Treatment", columns="Bin", values="Mean Difference")
+heatmap_pivot_pval = heatmap_df.pivot(index="Treatment", columns="Bin", values="P-Value")
+
+# Plot heatmaps
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 12))
+
+# Mean differences heatmap
+sns.heatmap(heatmap_pivot_diff, annot=True, cmap="RdYlBu", fmt=".2f", ax=ax1)
+ax1.set_title("Mean Differences vs DMSO")
+ax1.set_ylabel("Treatment")
+ax1.set_xlabel("Radius")
+
+# P-values heatmap
+sns.heatmap(heatmap_pivot_pval, annot=True, cmap="viridis_r", fmt=".2e", ax=ax2)
+ax2.set_title("P-Values")
+ax2.set_ylabel("Treatment")
+ax2.set_xlabel("Radius")
+
 plt.tight_layout()
 plt.show()
 
-# Plot heatmap for p-values
-plt.figure(figsize=(10, 6))
-sns.heatmap(heatmap_pivot_pval, annot=True, cmap="viridis", fmt=".4f")
-plt.title("P-Values for Differences Between DMSO and Other Treatments")
-plt.ylabel("Treatment")
-plt.xlabel("Distance Bin")
-plt.tight_layout()
-plt.show()
+# Print the exact p-values and mean differences
+print("\
+Detailed Statistical Results:\
+")
+for bin_name, pairs in bin_results_with_p.items():
+    print(f"Radius {bin_name}:")
+    for treatment, mean_diff, p_value in pairs:
+        print(f"{treatment} vs DMSO: p = {p_value:.2e} (mean increase = +{mean_diff:.2f})")
+    print()

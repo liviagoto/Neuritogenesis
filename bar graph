@@ -1,0 +1,93 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+# Define a more contrasting blue-only palette
+blue_palette = [
+    '#08306b',  # darkest blue
+    '#2171b5',
+    '#4292c6',
+    '#6baed6',
+    '#9ecae1',
+    '#c6dbef'   # lightest blue
+]
+
+# Define the radius bins
+bins = [1, 5, 10, 15, 20, 25, 30]
+bin_labels = ['1-5', '6-10', '11-15', '16-20', '21-25', '26-30']
+
+# Load and prepare data
+analysis_df = pd.read_excel('Sholl_Analysis_Combined_Sheets_NN e 5-MeO_analise.xlsx')
+layout_df = pd.read_excel('Sholl_Analysis_Combined_Sheets_NN e 5-MeO_Plate Layout.xlsx')
+analysis_df['Radius_Binned'] = pd.cut(analysis_df['Radius'], bins=bins, labels=bin_labels, right=True)
+
+# Filter for selected treatments
+selected_treatments = ['DMSO 1', '5-MeO 1 nM', '5-MeO 10 nM', '5-MeO 100 nM', '5-MeO 1 uM', '5-MeO 10 uM']
+
+# Create treatment mapping
+treatment_mapping = {}
+for index, row in layout_df.iterrows():
+    if pd.notna(row['Unnamed: 0']):
+        for col in range(1, 13):
+            col_name = f'Unnamed: {col}'
+            if col_name in row and pd.notna(row[col_name]):
+                well = f"{row['Unnamed: 0']}{col}"
+                treatment_mapping[well] = row[col_name]
+
+# Initialize DataFrames for means and SEMs
+means_data = pd.DataFrame(index=bin_labels, columns=selected_treatments)
+sems_data = pd.DataFrame(index=bin_labels, columns=selected_treatments)
+
+# Calculate means and SEMs for each treatment and bin
+for treatment in selected_treatments:
+    wells = [well for well, treat in treatment_mapping.items() if treat == treatment]
+    if wells:
+        treatment_data = analysis_df[wells]
+        for bin_label in bin_labels:
+            bin_mask = analysis_df['Radius_Binned'] == bin_label
+            bin_values = treatment_data.loc[bin_mask].mean()
+            means_data.loc[bin_label, treatment] = bin_values.mean()
+            sems_data.loc[bin_label, treatment] = bin_values.std() / np.sqrt(len(wells))
+
+# Create the plot with white background
+plt.figure(figsize=(12, 8), facecolor='white')
+ax = plt.gca()
+ax.set_facecolor('white')
+
+bar_width = 0.8 / len(selected_treatments)
+x = np.arange(len(bin_labels))
+
+# Plot bars with error bars
+for i, (treatment, color) in enumerate(zip(selected_treatments, blue_palette)):
+    offset = i * bar_width - (len(selected_treatments) - 1) * bar_width / 2
+    plt.bar(x + offset, means_data[treatment], 
+            bar_width, 
+            label=treatment, 
+            color=color,
+            yerr=sems_data[treatment],
+            capsize=5,
+            error_kw={'elinewidth': 1.5, 'capthick': 1.5})
+
+# Customize the plot
+plt.xlabel('Radius Bins (μm)', fontsize=12, fontweight='bold')
+plt.ylabel('Mean Number of Intersections', fontsize=12, fontweight='bold')
+plt.title('Binned Sholl Analysis: Mean Intersections by Treatment', fontsize=14, pad=20, fontweight='bold')
+plt.xticks(x, bin_labels, rotation=45)
+
+# Customize legend
+plt.legend(title='Treatment', 
+          fontsize=10, 
+          title_fontsize=12, 
+          bbox_to_anchor=(1.05, 1), 
+          loc='upper left',
+          frameon=True)
+
+# Add grid only on y-axis with light gray color
+plt.grid(axis='y', alpha=0.3, color='gray', linestyle='--')
+
+# Adjust layout and save
+plt.tight_layout()
+plt.savefig('sholl_binned_bar_graph_contrasting_blues.png', dpi=300, bbox_inches='tight', facecolor='white')
+plt.show()
+
+print("Bar graph with contrasting blue palette saved as 'sholl_binned_bar_graph_contrasting_blues.png'")

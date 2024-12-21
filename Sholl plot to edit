@@ -1,0 +1,65 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def create_sholl_plot(excel_file):
+    """
+    Create Sholl analysis plot from Excel file
+    """
+    # Read the data
+    df = pd.read_excel(excel_file)
+    
+    # Get the treatment information from the plate layout
+    layout_df = pd.read_excel('Sholl_Analysis_Combined_Sheets_NN e 5-MeO_Plate Layout.xlsx')
+    
+    # Create treatment dictionary
+    treatment_dict = {}
+    for index, row in layout_df.iterrows():
+        if pd.notna(row['Unnamed: 0']):  # If there's a letter (row identifier)
+            for col in range(2, 12):  # Columns 2-11 contain treatments
+                if pd.notna(row[f'Unnamed: {col}']):
+                    well = f"{row['Unnamed: 0']}{col}"
+                    treatment_dict[well] = row[f'Unnamed: {col}']
+    
+    # Prepare data for plotting
+    radius = df['Radius'].values
+    treatments = ['DMSO 1', '5-MeO 1 nM', '5-MeO 10 nM', 'NN 1 nM', 'NN 10 nM', 'fsk 10 uM']
+    colors = sns.color_palette('husl', n_colors=len(treatments))
+    
+    # Create the plot
+    plt.figure(figsize=(12, 8))
+    
+    # Plot each treatment
+    for treatment, color in zip(treatments, colors):
+        # Find columns (wells) corresponding to this treatment
+        treatment_wells = [well for well, treat in treatment_dict.items() if treat == treatment]
+        
+        # Get data for these wells
+        treatment_data = df[treatment_wells]
+        
+        # Calculate mean and SEM
+        mean_data = treatment_data.mean(axis=1)
+        sem_data = treatment_data.std(axis=1) / np.sqrt(len(treatment_wells))
+        
+        # Plot with error bars
+        plt.plot(radius, mean_data, label=treatment, color=color)
+        plt.fill_between(radius, 
+                        mean_data - sem_data,
+                        mean_data + sem_data,
+                        alpha=0.2,
+                        color=color)
+    
+    plt.xlabel('Radius (μm)')
+    plt.ylabel('Number of Intersections')
+    plt.title('Sholl Analysis')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Save and show the plot
+    plt.savefig('sholl_analysis_plot.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+# Run the function
+create_sholl_plot('Sholl_Analysis_Combined_Sheets_NN e 5-MeO_analise.xlsx')
+print("Plot has been saved as 'sholl_analysis_plot.png'")
